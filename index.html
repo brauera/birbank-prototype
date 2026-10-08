@@ -63,6 +63,14 @@
   var dots = document.querySelectorAll('.dot'), dotsBox = document.getElementById('dots');
   var statusEl = document.getElementById('status'), input = document.getElementById('pin');
 
+  // Lock screen follows the language chosen inside the prototype.
+  var L = { az: { sub: 'Giriş kodunu daxil edin', bad: 'Kod yanlışdır — yenidən cəhd edin', open: 'Açılır…', del: 'Sil' },
+            ru: { sub: 'Введите код доступа', bad: 'Неверный код — попробуйте ещё раз', open: 'Открываем…', del: 'Удалить' },
+            en: { sub: 'Enter the access code', bad: 'Wrong code — try again', open: 'Unlocking…', del: 'Delete' } };
+  var lang = 'en'; try { lang = (JSON.parse(localStorage.getItem('bb-proto-settings') || '{}').lang) || 'en'; } catch (_) {}
+  var TX = L[lang] || L.en; document.documentElement.lang = lang;
+  document.querySelector('.sub').textContent = TX.sub; var delBtn = document.querySelector('[data-del]'); delBtn.textContent = TX.del; delBtn.setAttribute('aria-label', TX.del);
+
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function () {});
 
   function paint() { for (var i = 0; i < dots.length; i++) dots[i].classList.toggle('on', i < pin.length); }
@@ -108,7 +116,6 @@
     '.is-desk #dc-root{border-radius:55px;box-shadow:0 30px 90px rgba(30,20,40,.22),0 0 0 10px #151414}',
     // On a phone the mock status bar collapses to the real status-bar inset (0 on Android, where the system bar sits outside the viewport).
     '.is-phone .sb-row{height:var(--sbH,0px)!important;min-height:0!important;visibility:hidden;overflow:hidden}.is-phone .th-homeind{display:none}',
-    '.pw-avatar{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;transition:transform 3s ease}.pw-avatar.pw-hold{transform:scale(.8)}',
     '</style>',
     '<script>(function(){var r=document.documentElement;function fit(){var vv=window.visualViewport,w=vv?vv.width:innerWidth,h=vv?vv.height:innerHeight;',
     'var app=navigator.standalone===true||matchMedia("(display-mode: standalone)").matches;r.classList.toggle("is-app",app);',
@@ -124,26 +131,15 @@
     'r.style.setProperty("--appS",s2);r.style.setProperty("--appH","844px");r.style.setProperty("--appR","55px");r.style.setProperty("--appTop",((h-844*s2)/2)+"px");}}',
     'fit();addEventListener("resize",fit);addEventListener("orientationchange",function(){setTimeout(fit,250)});if(window.visualViewport)visualViewport.addEventListener("resize",fit);',
     'document.addEventListener("gesturestart",function(e){e.preventDefault()});',
-    // Hold the avatar for 3 s to drop the offline cache and reload the latest build.
-    'var hold=null,hx=0,hy=0,hel=null;function stop(){if(hold){clearTimeout(hold);hold=null;}if(hel){hel.classList.remove("pw-hold");hel=null;}}',
-    'function reload(){try{navigator.vibrate&&navigator.vibrate(40);}catch(_){}',
-    'var p=[];try{if(window.caches)p.push(caches.keys().then(function(k){return Promise.all(k.map(function(n){return caches.delete(n)}))}));}catch(_){}',
-    'try{if(navigator.serviceWorker)p.push(navigator.serviceWorker.getRegistrations().then(function(rs){return Promise.all(rs.map(function(x){return x.unregister()}))}));}catch(_){}',
-    'Promise.all(p).catch(function(){}).then(function(){location.reload()});}',
-    'document.addEventListener("pointerdown",function(e){var a=e.target.closest&&e.target.closest(".pw-avatar");if(!a)return;stop();hel=a;hx=e.clientX;hy=e.clientY;a.classList.add("pw-hold");hold=setTimeout(function(){hold=null;reload();},3000);},true);',
-    'document.addEventListener("pointermove",function(e){if(hold&&(Math.abs(e.clientX-hx)>12||Math.abs(e.clientY-hy)>12))stop();},true);',
-    '["pointerup","pointercancel","touchend","touchcancel"].forEach(function(t){document.addEventListener(t,stop,true);});',
-    'document.addEventListener("scroll",function(e){var t=e.target;if(hel&&(t===document||(t.contains&&t.contains(hel))))stop();},true);',
-    'document.addEventListener("contextmenu",function(e){if(e.target.closest&&e.target.closest(".pw-avatar"))e.preventDefault();},true);',
     '})();<\/script>'
   ].join('\n');
 
   async function unlock(code, typed) {
-    busy = true; statusEl.textContent = 'Unlocking…';
+    busy = true; statusEl.textContent = TX.open;
     var data;
     try { data = await decrypt(code); }
     catch (e) {
-      busy = false; pin = ''; statusEl.textContent = typed ? 'Wrong code — try again' : '';
+      busy = false; pin = ''; statusEl.textContent = typed ? TX.bad : '';
       lockEl.classList.remove('auto');
       try { localStorage.removeItem(KEY); } catch (_) {}
       if (typed) { dotsBox.classList.remove('bad'); void dotsBox.offsetWidth; dotsBox.classList.add('bad'); setTimeout(function () { dotsBox.classList.remove('bad'); paint(); }, 450); }
@@ -152,23 +148,26 @@
     }
     try { localStorage.setItem(KEY, code); } catch (_) {}
     // Images become blob: URLs, the Bir screen is served to the runtime from memory.
-    var main = data.main, bir = data.bir;
+    var main = data.main, bir = data.bir, blobMap = {};
     Object.keys(data.blobs).forEach(function (id) {
       var b = data.blobs[id], url = URL.createObjectURL(new Blob([b64ToBytes(b.d)], { type: b.t }));
+      blobMap[id] = url;
       var re = new RegExp('/_blob/' + id, 'g'); main = main.replace(re, url); bir = bir.replace(re, url);
     });
     var birBlob = new Blob([bir], { type: 'text/html' }), birUrl = URL.createObjectURL(birBlob);
     window.__resources = { './Bir.dc.html': birUrl };
     window.__resourceBlobs = {}; window.__resourceBlobs[birUrl] = birBlob;
+    var layer = data.proto ? '<script>window.__pwBlobs=' + JSON.stringify(blobMap) + ';window.__pwI18n=' + JSON.stringify(data.i18n || {}).replace(/<\//g, '<\\/') + ';<\/script>\n<script>' + data.proto.replace(/<\//g, '<\\/') + '<\/script>\n' : '';
     main = main.replace('<script src="./support.js"><\/script>', '<script src="./dc-runtime.js"><\/script>')
-               .replace('</head>', HEAD + '\n</head>');
+               .replace('</head>', HEAD + '\n</head>')
+               .replace('</body>', layer + '</body>');
     document.open(); document.write(main); document.close();
   }
 
   // A remembered code opens the prototype straight away: show a splash, not the keypad, while it decrypts.
   var lockEl = document.getElementById('lock');
   var saved = null; try { saved = localStorage.getItem(KEY); } catch (_) {}
-  if (saved) { lockEl.classList.add('auto'); statusEl.textContent = 'Opening…'; unlock(saved, false); }
+  if (saved) { lockEl.classList.add('auto'); statusEl.textContent = TX.open; unlock(saved, false); }
   input.addEventListener('input', function () { pin = input.value.replace(/\D/g, '').slice(0, PIN_LEN); paint(); if (pin.length === PIN_LEN) unlock(pin, true); });
 })();
 </script>
