@@ -105,18 +105,36 @@
     'html.is-app,html.is-app body{height:100vh}',
     '#dc-root{position:fixed;left:50%;top:var(--appTop,0px);width:390px;height:var(--appH,844px);transform:translateX(-50%) scale(var(--appS,1));transform-origin:50% 0;touch-action:pan-x pan-y}',
     '.is-desk #dc-root{border-radius:55px;box-shadow:0 30px 90px rgba(30,20,40,.22),0 0 0 10px #151414}',
-    '.is-phone .sb-row{visibility:hidden}.is-phone .th-homeind{display:none}',
+    // On a phone the mock status bar collapses to the real status-bar inset (0 on Android, where the system bar sits outside the viewport).
+    '.is-phone .sb-row{height:var(--sbH,0px)!important;min-height:0!important;visibility:hidden;overflow:hidden}.is-phone .th-homeind{display:none}',
+    '.pw-avatar{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;transition:transform 3s ease}.pw-avatar.pw-hold{transform:scale(.8)}',
     '</style>',
     '<script>(function(){var r=document.documentElement;function fit(){var vv=window.visualViewport,w=vv?vv.width:innerWidth,h=vv?vv.height:innerHeight;',
     'var app=navigator.standalone===true||matchMedia("(display-mode: standalone)").matches;r.classList.toggle("is-app",app);',
-    'if(app){var pr=document.createElement("div");pr.style.cssText="position:fixed;top:0;left:0;width:0;height:100vh;visibility:hidden";r.appendChild(pr);h=Math.max(h,pr.offsetHeight,innerHeight);r.removeChild(pr);}',
+    'var pr=document.createElement("div");pr.style.cssText="position:fixed;top:0;left:0;width:0;height:100vh;visibility:hidden;padding-top:env(safe-area-inset-top,0px);box-sizing:content-box";r.appendChild(pr);',
+    'var inset=parseFloat(getComputedStyle(pr).paddingTop)||0,vh=pr.offsetHeight-inset;if(r.dataset.inset!=null)inset=+r.dataset.inset;',
+    // iOS home-screen app: the viewport covers the whole screen, but innerHeight can come up short by the status bar.
+    'if(app){h=Math.max(h,vh,innerHeight);if(navigator.standalone===true&&screen.height>screen.width&&Math.abs(w-screen.width)<2)h=Math.max(h,screen.height);}',
+    'r.removeChild(pr);',
     'var phone=w<=560;',
     'if(phone){var s=w/390;r.classList.add("is-phone");r.classList.remove("is-desk");',
-    'r.style.setProperty("--appS",s);r.style.setProperty("--appH",(h/s)+"px");r.style.setProperty("--appR","0px");r.style.setProperty("--appTop","0px");}',
+    'r.style.setProperty("--appS",s);r.style.setProperty("--appH",(h/s)+"px");r.style.setProperty("--appR","0px");r.style.setProperty("--appTop","0px");r.style.setProperty("--sbH",(inset/s)+"px");}',
     'else{var s2=Math.min(1.15,(h-64)/844,(w-48)/390);r.classList.add("is-desk");r.classList.remove("is-phone");',
     'r.style.setProperty("--appS",s2);r.style.setProperty("--appH","844px");r.style.setProperty("--appR","55px");r.style.setProperty("--appTop",((h-844*s2)/2)+"px");}}',
     'fit();addEventListener("resize",fit);addEventListener("orientationchange",function(){setTimeout(fit,250)});if(window.visualViewport)visualViewport.addEventListener("resize",fit);',
-    'document.addEventListener("gesturestart",function(e){e.preventDefault()});})();<\/script>'
+    'document.addEventListener("gesturestart",function(e){e.preventDefault()});',
+    // Hold the avatar for 3 s to drop the offline cache and reload the latest build.
+    'var hold=null,hx=0,hy=0,hel=null;function stop(){if(hold){clearTimeout(hold);hold=null;}if(hel){hel.classList.remove("pw-hold");hel=null;}}',
+    'function reload(){try{navigator.vibrate&&navigator.vibrate(40);}catch(_){}',
+    'var p=[];try{if(window.caches)p.push(caches.keys().then(function(k){return Promise.all(k.map(function(n){return caches.delete(n)}))}));}catch(_){}',
+    'try{if(navigator.serviceWorker)p.push(navigator.serviceWorker.getRegistrations().then(function(rs){return Promise.all(rs.map(function(x){return x.unregister()}))}));}catch(_){}',
+    'Promise.all(p).catch(function(){}).then(function(){location.reload()});}',
+    'document.addEventListener("pointerdown",function(e){var a=e.target.closest&&e.target.closest(".pw-avatar");if(!a)return;stop();hel=a;hx=e.clientX;hy=e.clientY;a.classList.add("pw-hold");hold=setTimeout(function(){hold=null;reload();},3000);},true);',
+    'document.addEventListener("pointermove",function(e){if(hold&&(Math.abs(e.clientX-hx)>12||Math.abs(e.clientY-hy)>12))stop();},true);',
+    '["pointerup","pointercancel","touchend","touchcancel"].forEach(function(t){document.addEventListener(t,stop,true);});',
+    'document.addEventListener("scroll",function(e){var t=e.target;if(hel&&(t===document||(t.contains&&t.contains(hel))))stop();},true);',
+    'document.addEventListener("contextmenu",function(e){if(e.target.closest&&e.target.closest(".pw-avatar"))e.preventDefault();},true);',
+    '})();<\/script>'
   ].join('\n');
 
   async function unlock(code, typed) {
