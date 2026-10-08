@@ -32,6 +32,7 @@
   .key:active { background: rgba(21,20,20,0.16); transform: scale(0.96); }
   .key:focus-visible { outline: 2px solid #ed1e40; outline-offset: 3px; }
   .key.ghost { background: transparent; font-size: 16px; font-weight: 500; }
+  .lock.auto .sub, .lock.auto .dots, .lock.auto .pad { display: none; }
   .status { min-height: 20px; font-size: 14px; line-height: 20px; color: rgba(21,20,20,0.55); text-align: center; }
   .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
   @media (max-height: 640px) { .lock { gap: 18px; } .key { width: 64px; height: 64px; font-size: 26px; } .pad { grid-template-columns: repeat(3, 64px); gap: 12px 22px; } .logo { width: 56px; height: 56px; } }
@@ -143,6 +144,7 @@
     try { data = await decrypt(code); }
     catch (e) {
       busy = false; pin = ''; statusEl.textContent = typed ? 'Wrong code — try again' : '';
+      lockEl.classList.remove('auto');
       try { localStorage.removeItem(KEY); } catch (_) {}
       if (typed) { dotsBox.classList.remove('bad'); void dotsBox.offsetWidth; dotsBox.classList.add('bad'); setTimeout(function () { dotsBox.classList.remove('bad'); paint(); }, 450); }
       else paint();
@@ -163,8 +165,10 @@
     document.open(); document.write(main); document.close();
   }
 
+  // A remembered code opens the prototype straight away: show a splash, not the keypad, while it decrypts.
+  var lockEl = document.getElementById('lock');
   var saved = null; try { saved = localStorage.getItem(KEY); } catch (_) {}
-  if (saved) unlock(saved, false);
+  if (saved) { lockEl.classList.add('auto'); statusEl.textContent = 'Opening…'; unlock(saved, false); }
   input.addEventListener('input', function () { pin = input.value.replace(/\D/g, '').slice(0, PIN_LEN); paint(); if (pin.length === PIN_LEN) unlock(pin, true); });
 })();
 </script>
