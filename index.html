@@ -157,7 +157,7 @@
     var birBlob = new Blob([bir], { type: 'text/html' }), birUrl = URL.createObjectURL(birBlob);
     window.__resources = { './Bir.dc.html': birUrl };
     window.__resourceBlobs = {}; window.__resourceBlobs[birUrl] = birBlob;
-    var layer = data.proto ? '<script>window.__pwBlobs=' + JSON.stringify(blobMap) + ';window.__pwI18n=' + JSON.stringify(data.i18n || {}).replace(/<\//g, '<\\/') + ';<\/script>\n<script>' + data.proto.replace(/<\//g, '<\\/') + '<\/script>\n' : '';
+    var layer = data.proto ? '<script>window.__pwBlobs=' + JSON.stringify(blobMap) + ';window.__pwChangelog=' + JSON.stringify(data.changelog || []).replace(/<\//g, '<\\/') + ';window.__pwBuild=' + JSON.stringify(data.build || '') + ';window.__pwI18n=' + JSON.stringify(data.i18n || {}).replace(/<\//g, '<\\/') + ';<\/script>\n<script>' + data.proto.replace(/<\//g, '<\\/') + '<\/script>\n' : '';
     main = main.replace('<script src="./support.js"><\/script>', '<script src="./dc-runtime.js"><\/script>')
                .replace('</head>', HEAD + '\n</head>')
                .replace('</body>', layer + '</body>');
