@@ -1,5 +1,5 @@
 // Offline cache for the prototype. Network first (so a new deploy shows up), cache as fallback.
-const CACHE = 'birbank-proto-9588a64b38';
+const CACHE = 'birbank-proto-c6aa9dd6a7';
 const CORE = ['./', './index.html', './dc-runtime.js', './bundle.bin', './manifest.webmanifest',
   './icon-192.png', './icon-512.png', './icon-maskable-512.png', './apple-touch-icon.png'];
 
