@@ -115,7 +115,7 @@
     '#dc-root{position:fixed;left:50%;top:var(--appTop,0px);width:var(--appW,390px);height:var(--appH,844px);transform:translateX(-50%) scale(var(--appS,1));transform-origin:50% 0;touch-action:pan-x pan-y}',
     '.is-desk #dc-root{border-radius:55px;box-shadow:0 30px 90px rgba(30,20,40,.22),0 0 0 10px #151414}',
     // Phone: the screen is laid out at the real viewport width (responsive), so paddings stay the same on every phone instead of scaling.
-    '.is-phone #dc-root{left:0;top:0;transform:none}',
+    '.is-phone #dc-root{left:0;top:0;transform:none}.is-phone.is-zoom #dc-root{zoom:var(--appS,1)}',
     // On a phone the mock status bar collapses to the real status-bar inset (0 on Android, where the system bar sits outside the viewport).
     '.is-phone .sb-row{height:var(--sbH,0px)!important;min-height:0!important;visibility:hidden;overflow:hidden}.is-phone .th-homeind{display:none}',
     '</style>',
@@ -127,11 +127,13 @@
     'if(app){h=Math.max(h,vh,innerHeight);if(navigator.standalone===true&&screen.height>screen.width&&Math.abs(w-screen.width)<2)h=Math.max(h,screen.height);}',
     'r.removeChild(pr);',
     'var phone=w<=560;',
-    'if(phone){r.classList.add("is-phone");r.classList.remove("is-desk");',
-    'r.style.setProperty("--appS",1);r.style.setProperty("--appW",w+"px");r.style.setProperty("--appH",h+"px");r.style.setProperty("--appR","0px");r.style.setProperty("--appTop","0px");r.style.setProperty("--sbH",inset+"px");}',
+    'var resp=true;try{resp=(JSON.parse(localStorage.getItem("bb-proto-settings")||"{}").responsive)!==false}catch(e){}',
+    // responsive (default): laid out at the real width, same paddings; off: the 390pt layout zoomed to the width (the earlier behaviour)
+    'if(phone){var s=resp?1:w/390;r.classList.add("is-phone");r.classList.remove("is-desk");r.classList.toggle("is-zoom",!resp);',
+    'r.style.setProperty("--appS",s);r.style.setProperty("--appW",(resp?w:390)+"px");r.style.setProperty("--appH",(h/s)+"px");r.style.setProperty("--appR","0px");r.style.setProperty("--appTop","0px");r.style.setProperty("--sbH",(inset/s)+"px");}',
     'else{var s2=Math.min(1.15,(h-64)/844,(w-48)/390);r.classList.add("is-desk");r.classList.remove("is-phone");r.style.setProperty("--appW","390px");',
     'r.style.setProperty("--appS",s2);r.style.setProperty("--appH","844px");r.style.setProperty("--appR","55px");r.style.setProperty("--appTop",((h-844*s2)/2)+"px");}}',
-    'fit();addEventListener("resize",fit);addEventListener("orientationchange",function(){setTimeout(fit,250)});if(window.visualViewport)visualViewport.addEventListener("resize",fit);',
+    'window.__pwFit=fit;fit();addEventListener("resize",fit);addEventListener("orientationchange",function(){setTimeout(fit,250)});if(window.visualViewport)visualViewport.addEventListener("resize",fit);',
     'document.addEventListener("gesturestart",function(e){e.preventDefault()});',
     '})();<\/script>'
   ].join('\n');
