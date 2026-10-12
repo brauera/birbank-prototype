@@ -37,7 +37,26 @@
   .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
   @media (max-height: 640px) { .lock { gap: 18px; } .key { width: 64px; height: 64px; font-size: 26px; } .pad { grid-template-columns: repeat(3, 64px); gap: 12px 22px; } .logo { width: 56px; height: 56px; } }
   @media (prefers-reduced-motion: reduce) { .dots.bad { animation: none; } }
+  html.lk-dark { color-scheme: dark; }
+  html.lk-dark, html.lk-dark body { background: #121212; color: rgba(255,255,255,0.92); }
+  html.lk-dark .sub, html.lk-dark .status { color: rgba(255,255,255,0.55); }
+  html.lk-dark .dot { box-shadow: inset 0 0 0 1.5px rgba(255,255,255,0.4); }
+  html.lk-dark .dot.on { background: #fff; box-shadow: none; }
+  html.lk-dark .dots.bad .dot.on { background: #ed1e40; }
+  html.lk-dark .key { background: rgba(255,255,255,0.1); }
+  html.lk-dark .key:active { background: rgba(255,255,255,0.2); }
+  html.lk-dark .key.ghost { background: transparent; }
 </style>
+<script>
+/* lock screen follows the saved theme; 'system' (the default) follows the phone */
+(function () { try {
+  var s = JSON.parse(localStorage.getItem('bb-proto-settings') || '{}'), t = s.themeAuto === 1 ? s.theme : 'system';
+  var mq = window.matchMedia('(prefers-color-scheme: dark)');
+  var set = function () { var d = t === 'dark' || (t !== 'light' && mq.matches); document.documentElement.classList.toggle('lk-dark', d);
+    var m = document.querySelector('meta[name="theme-color"]'); if (m && !document.getElementById('dc-root')) m.setAttribute('content', d ? '#121212' : '#f7f6f6'); };
+  set(); if (mq.addEventListener) mq.addEventListener('change', set);
+} catch (e) {} })();
+</script>
 </head>
 <body>
 <main class="lock" id="lock">
