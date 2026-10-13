@@ -117,6 +117,14 @@
     var key = await crypto.subtle.deriveKey({ name: 'PBKDF2', salt: salt, iterations: ITER, hash: 'SHA-256' }, base,
       { name: 'AES-GCM', length: 256 }, false, ['decrypt']);
     var plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: iv }, key, ct);
+    var u = new Uint8Array(plain);
+    // v2 bundle: "BB2" + header length (uint32 LE) + JSON header + raw image bytes (no base64 to decode, ~25% smaller)
+    if (u[0] === 66 && u[1] === 66 && u[2] === 50) {
+      var hl = new DataView(plain).getUint32(3, true);
+      var data = JSON.parse(new TextDecoder().decode(u.subarray(7, 7 + hl)));
+      data.bin = plain; data.binAt = 7 + hl;
+      return data;
+    }
     return JSON.parse(new TextDecoder().decode(plain));
   }
 
@@ -173,10 +181,13 @@
     // Images become blob: URLs, the Bir screen is served to the runtime from memory.
     var main = data.main, bir = data.bir, blobMap = {};
     Object.keys(data.blobs).forEach(function (id) {
-      var b = data.blobs[id], url = URL.createObjectURL(new Blob([b64ToBytes(b.d)], { type: b.t }));
-      blobMap[id] = url;
-      var re = new RegExp('/_blob/' + id, 'g'); main = main.replace(re, url); bir = bir.replace(re, url);
+      var b = data.blobs[id];
+      var bytes = data.bin ? new Uint8Array(data.bin, data.binAt + b.o, b.n) : b64ToBytes(b.d);
+      blobMap[id] = URL.createObjectURL(new Blob([bytes], { type: b.t }));
     });
+    // one pass over each screen instead of one regex pass per image
+    var swap = function (m, id) { return blobMap[id] || m; };
+    main = main.replace(/\/_blob\/([0-9a-f]{32})/g, swap); bir = bir.replace(/\/_blob\/([0-9a-f]{32})/g, swap);
     var birBlob = new Blob([bir], { type: 'text/html' }), birUrl = URL.createObjectURL(birBlob);
     window.__resources = { './Bir.dc.html': birUrl };
     window.__resourceBlobs = {}; window.__resourceBlobs[birUrl] = birBlob;
