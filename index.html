@@ -140,7 +140,7 @@
     'html.is-phone,html.is-phone body{background:#f7f6f6}',
     'html.is-app,html.is-app body{height:100vh}',
     '#dc-root{position:fixed;left:50%;top:var(--appTop,0px);width:var(--appW,390px);height:var(--appH,844px);transform:translateX(-50%) scale(var(--appS,1));transform-origin:50% 0;touch-action:pan-x pan-y}',
-    '.is-desk #dc-root{border-radius:55px;box-shadow:0 30px 90px rgba(30,20,40,.22),0 0 0 10px #151414}',
+    '.is-desk #dc-root{border-radius:var(--appR,55px);box-shadow:0 30px 90px rgba(30,20,40,.22),0 0 0 10px #151414}',
     // Phone: the screen is laid out at the real viewport width (responsive), so paddings stay the same on every phone instead of scaling.
     '.is-phone #dc-root{left:0;top:0;transform:none}.is-phone.is-zoom #dc-root{zoom:var(--appS,1)}',
     // On a phone the mock status bar collapses to the real status-bar inset (0 on Android, where the system bar sits outside the viewport).
@@ -153,13 +153,16 @@
     // iOS home-screen app: the viewport covers the whole screen, but innerHeight can come up short by the status bar.
     'if(app){h=Math.max(h,vh,innerHeight);if(navigator.standalone===true&&screen.height>screen.width&&Math.abs(w-screen.width)<2)h=Math.max(h,screen.height);}',
     'r.removeChild(pr);',
-    'var phone=w<=560;',
-    'var resp=true;try{resp=(JSON.parse(localStorage.getItem("bb-proto-settings")||"{}").responsive)!==false}catch(e){}',
+    // Device (settings → Prototype → Device): the phone, or the foldable (iPhone Duo inner display, 951 × 669) — always shown whole, scaled to fit
+    'var resp=true,fold=false;try{var so=JSON.parse(localStorage.getItem("bb-proto-settings")||"{}");resp=so.responsive!==false;fold=so.device==="fold"}catch(e){}',
+    'var AW=fold?951:390,AH=fold?669:844,AR=fold?40:55;r.classList.toggle("is-fold",fold);',
+    'var phone=w<=560&&!fold;',
     // responsive (default): laid out at the real width, same paddings; off: the 390pt layout zoomed to the width (the earlier behaviour)
     'if(phone){var s=resp?1:w/390;r.classList.add("is-phone");r.classList.remove("is-desk");r.classList.toggle("is-zoom",!resp);',
     'r.style.setProperty("--appS",s);r.style.setProperty("--appW",(resp?w:390)+"px");r.style.setProperty("--appH",(h/s)+"px");r.style.setProperty("--appR","0px");r.style.setProperty("--appTop","0px");r.style.setProperty("--sbH",(inset/s)+"px");}',
-    'else{var s2=Math.min(1.15,(h-64)/844,(w-48)/390);r.classList.add("is-desk");r.classList.remove("is-phone");r.style.setProperty("--appW","390px");',
-    'r.style.setProperty("--appS",s2);r.style.setProperty("--appH","844px");r.style.setProperty("--appR","55px");r.style.setProperty("--appTop",((h-844*s2)/2)+"px");}}',
+    // desktop: the settings panel sits at the left edge, so a wide device leaves room for it (panel 360 + 3 gaps of 24)
+    'else{var room=fold&&w>=1000?w-456:w-48;var s2=Math.min(1.15,(h-64)/AH,room/AW);r.classList.add("is-desk");r.classList.remove("is-phone");r.style.setProperty("--appW",AW+"px");',
+    'r.style.setProperty("--appS",s2);r.style.setProperty("--appH",AH+"px");r.style.setProperty("--appR",AR+"px");r.style.setProperty("--appTop",((h-AH*s2)/2)+"px");}}',
     'window.__pwFit=fit;fit();addEventListener("resize",fit);addEventListener("orientationchange",function(){setTimeout(fit,250)});if(window.visualViewport)visualViewport.addEventListener("resize",fit);',
     'document.addEventListener("gesturestart",function(e){e.preventDefault()});',
     '})();<\/script>'
@@ -191,6 +194,15 @@
     var birBlob = new Blob([bir], { type: 'text/html' }), birUrl = URL.createObjectURL(birBlob);
     window.__resources = { './Bir.dc.html': birUrl };
     window.__resourceBlobs = {}; window.__resourceBlobs[birUrl] = birBlob;
+    // Foldable (settings → Prototype → Device): the Duo host page shows the Home and Bir boards of the inner display
+    var fold = false; try { fold = (JSON.parse(localStorage.getItem('bb-proto-settings') || '{}').device) === 'fold'; } catch (_) {}
+    if (fold && data.duoHost) {
+      [['./Main-duo.dc.html', data.mainDuo], ['./Bir-duo.dc.html', data.birDuo]].forEach(function (x) {
+        var bb = new Blob([x[1].replace(/\/_blob\/([0-9a-f]{32})/g, swap)], { type: 'text/html' }), u = URL.createObjectURL(bb);
+        window.__resources[x[0]] = u; window.__resourceBlobs[u] = bb;
+      });
+      main = data.duoHost.replace(/\/_blob\/([0-9a-f]{32})/g, swap);
+    }
     var layer = data.proto ? '<script>window.__pwBlobs=' + JSON.stringify(blobMap) + ';window.__pwChangelog=' + JSON.stringify(data.changelog || []).replace(/<\//g, '<\\/') + ';window.__pwBuild=' + JSON.stringify(data.build || '') + ';window.__pwI18n=' + JSON.stringify(data.i18n || {}).replace(/<\//g, '<\\/') + ';<\/script>\n<script>' + data.proto.replace(/<\//g, '<\\/') + '<\/script>\n' : '';
     main = main.replace('<script src="./support.js"><\/script>', '<script src="./dc-runtime.js"><\/script>')
                .replace('</head>', HEAD + '\n</head>')
