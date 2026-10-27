@@ -119,6 +119,14 @@
     var plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: iv }, key, ct);
     var u = new Uint8Array(plain);
     // v2 bundle: "BB2" + header length (uint32 LE) + JSON header + raw image bytes (no base64 to decode, ~25% smaller)
+    // v3: the JSON header is deflate-compressed (raw deflate); the images stay as they are
+    if (u[0] === 66 && u[1] === 66 && u[2] === 51) {
+      var zl = new DataView(plain).getUint32(3, true);
+      var ds = new Blob([u.subarray(7, 7 + zl)]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+      var d3 = JSON.parse(await new Response(ds).text());
+      d3.bin = plain; d3.binAt = 7 + zl;
+      return d3;
+    }
     if (u[0] === 66 && u[1] === 66 && u[2] === 50) {
       var hl = new DataView(plain).getUint32(3, true);
       var data = JSON.parse(new TextDecoder().decode(u.subarray(7, 7 + hl)));
