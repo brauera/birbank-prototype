@@ -189,6 +189,8 @@
     '.is-desk #dc-root{border-radius:var(--appR,55px);box-shadow:0 30px 90px rgba(30,20,40,.22),0 0 0 10px #151414}',
     // Phone: the screen is laid out at the real viewport width (responsive), so paddings stay the same on every phone instead of scaling.
     '.is-phone #dc-root{left:0;top:0;transform:none}.is-phone.is-zoom #dc-root{zoom:var(--appS,1)}',
+    // v3.27 the foldable opened on a real touch device: full screen, no mock bezel or shadow, no mock status bar
+    '.is-fold-dev #dc-root{left:0;top:0;transform:none;zoom:var(--appS,1);border-radius:0;box-shadow:none}.is-fold-dev .duo,.is-fold-dev .duo-host{height:var(--appH)!important;border-radius:0!important}.is-fold-dev .duo-sb{visibility:hidden}',
     // On a phone the mock status bar collapses to the real status-bar inset (0 on Android, where the system bar sits outside the viewport).
     '.is-phone .sb-row{height:var(--sbH,0px)!important;min-height:0!important;visibility:hidden;overflow:hidden}.is-phone .th-homeind{display:none}',
     '</style>',
@@ -203,6 +205,8 @@
     'var resp=true,fold=false;try{var so=JSON.parse(localStorage.getItem("bb-proto-settings")||"{}");resp=so.responsive!==false;fold=so.device==="fold"}catch(e){}',
     'var AW=fold?951:390,AH=fold?669:844,AR=fold?40:55;r.classList.toggle("is-fold",fold);',
     'var phone=w<=560&&!fold;',
+    'var touch=false;try{touch=matchMedia("(pointer: coarse)").matches&&!matchMedia("(any-pointer: fine)").matches}catch(e){}var fdev=fold&&touch;r.classList.toggle("is-fold-dev",fdev);',
+    'if(fdev){var s3=w/AW;r.classList.remove("is-phone","is-desk","is-zoom");r.style.setProperty("--appS",s3);r.style.setProperty("--appW",AW+"px");r.style.setProperty("--appH",(h/s3)+"px");r.style.setProperty("--appR","0px");r.style.setProperty("--appTop","0px");return;}',
     // responsive (default): laid out at the real width, same paddings; off: the 390pt layout zoomed to the width (the earlier behaviour)
     'if(phone){var s=resp?1:w/390;r.classList.add("is-phone");r.classList.remove("is-desk");r.classList.toggle("is-zoom",!resp);',
     'r.style.setProperty("--appS",s);r.style.setProperty("--appW",(resp?w:390)+"px");r.style.setProperty("--appH",(h/s)+"px");r.style.setProperty("--appR","0px");r.style.setProperty("--appTop","0px");r.style.setProperty("--sbH",(inset/s)+"px");}',
